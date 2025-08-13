@@ -1,0 +1,62 @@
+version: "3.9"
+
+services:
+  qdrant:
+    image: qdrant/qdrant
+    container_name: qdrant
+    ports:
+      - "6333:6333"
+    volumes:
+      - qdrant_data:/qdrant/storage
+
+  jiraairca:
+    build: ./jiraairca
+    container_name: jiraairca
+    ports:
+      - "9090:8000"
+    volumes:
+      - jiraairca_data:/jiraairca
+    depends_on:
+      - qdrant
+      - ollama
+    environment:
+      - QDRANT_HOST=qdrant
+      - QDRANT_PORT=6333
+      - OLLAMA_API=http://ollama:11434
+      - MODEL_NAME=mistral
+      - JIRA_URL=https://jira.domain.com
+      - JIRA_TOKEN=YOUR_TOKEN
+      - JIRA_PAT=YOUR_PAT
+      - JIRA_USER=YOUR_USERNAME
+
+  ollama:
+    build: ./ollama
+    container_name: ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    environment:
+      - OLLAMA_NO_TLS_VERIFY=1
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [gpu]
+
+  jupyter:
+      image: jupyter/scipy-notebook:latest
+      container_name: jupyter
+      ports:
+        - "9091:8888"
+      volumes:
+        - notebooks_data:/home/jovyan/work
+      environment:
+        - JUPYTER_ENABLE_LAB=yes
+      command: start-notebook.sh --NotebookApp.token='' --NotebookApp.password=''
+
+volumes:
+  qdrant_data:
+  ollama_data:
+  jiraairca_data:
+  notebooks_data:
